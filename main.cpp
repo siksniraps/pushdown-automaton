@@ -17,6 +17,7 @@ private:
 	struct TransitionKey {
 		std::string symbol;
 		std::string stackSymbol;
+		TransitionKey(){}
 		TransitionKey(std::string symbol, std::string stackSymbol) : symbol(symbol), stackSymbol(stackSymbol){}
 		bool operator<(const TransitionKey& rhs) const {
 			return symbol < rhs.symbol || stackSymbol < rhs.stackSymbol;
@@ -25,6 +26,7 @@ private:
 	struct TransitionValue {
 		std::string nextStateName;
 		std::string nextStackSymbol;
+		TransitionValue(){}
 		TransitionValue(std::string nextStateName, std::string nextStackSymbol) : nextStateName(nextStateName), nextStackSymbol(nextStackSymbol) {}
 		bool operator<(const TransitionValue& rhs) const {
 			return nextStateName < rhs.nextStateName || nextStackSymbol < rhs.nextStackSymbol;
@@ -45,9 +47,10 @@ private:
 	std::map<std::string, State> states;
 	std::set<std::string> alphabet;
 	std::set<std::string> stackAlphabet;
+	std::stack<std::string> stack;
 	std::string initialState;
 	std::string initialStackSymbol;
-	int currentState;
+	State currentState;
 	bool acceptsWhenEmptyStack;
 
 	void readLineIntoSet(std::istream &in, std::set<std::string> &s) {
@@ -77,10 +80,12 @@ private:
 		states[stateName].transitions.insert(std::make_pair(TransitionKey(symbol, stackSymbol), TransitionValue(nextStateName, nextStackSymbol)));
 	}
 
+	bool isAccepting() {
+		return acceptsWhenEmptyStack ? stack.empty() : currentState.accepting;
+	}
+
 public:
 	void load(std::string filename) {
-	    
-		
 
 		std::fstream fin;
 		fin.open(filename.c_str(), std::ios::in);
@@ -96,6 +101,7 @@ public:
 		std::getline(fin, initialState);
 		//read initial stack symbol
 		std::getline(fin, initialStackSymbol);
+		stack.push(initialStackSymbol);
 		//read accepting states
 		std::string acceptingStatesLine;
 		std::getline(fin, acceptingStatesLine);
@@ -114,6 +120,18 @@ public:
 		}
 		fin.close();
 	}
+
+	bool verify(std::string word) {
+		for (unsigned int i = 0; i < word.length(); i++) {
+			TransitionKey key(std::string(1, word.at(i)), stack.top());
+			stack.pop();
+			TransitionValue value = currentState.transitions[key];
+			currentState = states[value.nextStateName];
+			stack.push(value.nextStackSymbol);
+		}
+		
+		return isAccepting();
+	}
 };
 
 
@@ -126,6 +144,9 @@ int main() {
     automaton.load("automaton.in");
 	std::string word;
 	promptInputWord(word);
+
+	std::cout << (automaton.verify(word) ? "Accepted" : "Not Accepted") << std::endl;
+
 	std::cin >> word;
 
 	return 0;
