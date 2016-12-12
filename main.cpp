@@ -12,12 +12,34 @@
 
 class PushdownAutomaton {
 private:
+
+	
+	struct TransitionKey {
+		std::string symbol;
+		std::string stackSymbol;
+		TransitionKey(std::string symbol, std::string stackSymbol) : symbol(symbol), stackSymbol(stackSymbol){}
+		bool operator<(const TransitionKey& rhs) const {
+			return symbol < rhs.symbol || stackSymbol < rhs.stackSymbol;
+		}
+	};
+	struct TransitionValue {
+		std::string nextStateName;
+		std::string nextStackSymbol;
+		TransitionValue(std::string nextStateName, std::string nextStackSymbol) : nextStateName(nextStateName), nextStackSymbol(nextStackSymbol) {}
+		bool operator<(const TransitionValue& rhs) const {
+			return nextStateName < rhs.nextStateName || nextStackSymbol < rhs.nextStackSymbol;
+		}
+	};
+	
+
 	struct State {
 		std::string name;
 		bool accepting;
+		std::map<TransitionKey, TransitionValue> transitions;
+		State() {}
 		State(std::string name, bool accepting) : name(name), accepting(accepting){}
 		bool operator<(const State& rhs) const {
-			return name == rhs.name;
+			return name < rhs.name;
 		}
 	};
 	std::map<std::string, State> states;
@@ -51,15 +73,20 @@ private:
 		}
 	}
 
+	void addTransition(std::string stateName, std::string symbol, std::string stackSymbol, std::string nextStateName, std::string nextStackSymbol) {
+		states[stateName].transitions.insert(std::make_pair(TransitionKey(symbol, stackSymbol), TransitionValue(nextStateName, nextStackSymbol)));
+	}
+
 public:
 	void load(std::string filename) {
-	    std::string statesLine;
-		std::string acceptingStatesLine;
+	    
+		
 
 		std::fstream fin;
 		fin.open(filename.c_str(), std::ios::in);
 
 		//read list of states
+		std::string statesLine;
 		std::getline(fin, statesLine);
 		//read alphabet
 		readLineIntoSet(fin, alphabet);
@@ -70,11 +97,21 @@ public:
 		//read initial stack symbol
 		std::getline(fin, initialStackSymbol);
 		//read accepting states
+		std::string acceptingStatesLine;
 		std::getline(fin, acceptingStatesLine);
-
 		//fill set of states
 		storeStates(statesLine, acceptingStatesLine);
-
+		
+		std::string line;
+		//read accept mode
+		std::getline(fin, line);
+		acceptsWhenEmptyStack = (line == "E");
+		//read transitions
+		while (std::getline(fin, line)) {
+			std::stringstream iss(line);
+			std::istream_iterator<std::string> begin(iss);
+			addTransition(*begin++, *begin++, *begin++, *begin++, *begin);
+		}
 		fin.close();
 	}
 };
