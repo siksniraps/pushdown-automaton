@@ -20,7 +20,7 @@ private:
 		TransitionKey(){}
 		TransitionKey(std::string symbol, std::string stackSymbol) : symbol(symbol), stackSymbol(stackSymbol){}
 		bool operator<(const TransitionKey& rhs) const {
-			return symbol < rhs.symbol || stackSymbol < rhs.stackSymbol;
+			return symbol < rhs.symbol || symbol == rhs.symbol && stackSymbol < rhs.stackSymbol;
 		}
 	};
 	struct TransitionValue {
@@ -29,7 +29,7 @@ private:
 		TransitionValue(){}
 		TransitionValue(std::string nextStateName, std::string nextStackSymbol) : nextStateName(nextStateName), nextStackSymbol(nextStackSymbol) {}
 		bool operator<(const TransitionValue& rhs) const {
-			return nextStateName < rhs.nextStateName || nextStackSymbol < rhs.nextStackSymbol;
+			return nextStateName < rhs.nextStateName || nextStateName == rhs.nextStateName && nextStackSymbol < rhs.nextStackSymbol;
 		}
 	};
 	
@@ -48,9 +48,9 @@ private:
 	std::set<std::string> alphabet;
 	std::set<std::string> stackAlphabet;
 	std::stack<std::string> stack;
-	std::string initialState;
+	std::string initialStateName;
 	std::string initialStackSymbol;
-	State currentState;
+	
 	bool acceptsWhenEmptyStack;
 
 	void readLineIntoSet(std::istream &in, std::set<std::string> &s) {
@@ -77,11 +77,11 @@ private:
 	}
 
 	void addTransition(std::string stateName, std::string symbol, std::string stackSymbol, std::string nextStateName, std::string nextStackSymbol) {
-		states[stateName].transitions.insert(std::make_pair(TransitionKey(symbol, stackSymbol), TransitionValue(nextStateName, nextStackSymbol)));
+		states.find(stateName)->second.transitions.insert(std::make_pair(TransitionKey(symbol, stackSymbol), TransitionValue(nextStateName, nextStackSymbol)));
 	}
 
-	bool isAccepting() {
-		return acceptsWhenEmptyStack ? stack.empty() : currentState.accepting;
+	bool isAccepting(State *currentState) {
+		return acceptsWhenEmptyStack ? stack.empty() : currentState->accepting;
 	}
 
 public:
@@ -98,7 +98,7 @@ public:
 		//read stack alphabet
 		readLineIntoSet(fin, stackAlphabet);
 		//read initial state
-		std::getline(fin, initialState);
+		std::getline(fin, initialStateName);
 		//read initial stack symbol
 		std::getline(fin, initialStackSymbol);
 		stack.push(initialStackSymbol);
@@ -107,7 +107,7 @@ public:
 		std::getline(fin, acceptingStatesLine);
 		//fill set of states
 		storeStates(statesLine, acceptingStatesLine);
-		
+
 		std::string line;
 		//read accept mode
 		std::getline(fin, line);
@@ -116,21 +116,28 @@ public:
 		while (std::getline(fin, line)) {
 			std::stringstream iss(line);
 			std::istream_iterator<std::string> begin(iss);
-			addTransition(*begin++, *begin++, *begin++, *begin++, *begin);
+			std::string stateName = *begin++;
+			std::string symbol = *begin++;
+			std::string stackSymbol = *begin++;
+			std::string nextStateName = *begin++;
+			std::string nextStackSymbol = *begin++;
+
+			addTransition(stateName, symbol, stackSymbol, nextStateName, nextStackSymbol);
 		}
 		fin.close();
 	}
 
 	bool verify(std::string word) {
+		State *currentState = &states.find(initialStateName)->second;
 		for (unsigned int i = 0; i < word.length(); i++) {
 			TransitionKey key(std::string(1, word.at(i)), stack.top());
 			stack.pop();
-			TransitionValue value = currentState.transitions[key];
-			currentState = states[value.nextStateName];
+			TransitionValue value = currentState->transitions.find(key)->second;
+			currentState = &states[value.nextStateName];
 			stack.push(value.nextStackSymbol);
 		}
 		
-		return isAccepting();
+		return isAccepting(currentState);
 	}
 };
 
