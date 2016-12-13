@@ -47,7 +47,7 @@ private:
 	std::map<std::string, State> states;
 	std::set<std::string> alphabet;
 	std::set<std::string> stackAlphabet;
-	std::stack<std::string> stack;
+	
 	std::string initialStateName;
 	std::string initialStackSymbol;
 	
@@ -77,12 +77,9 @@ private:
 	}
 
 	void addTransition(std::string stateName, std::string symbol, std::string stackSymbol, std::string nextStateName, std::string nextStackSymbol) {
-		states.find(stateName)->second.transitions.insert(std::make_pair(TransitionKey(symbol, stackSymbol), TransitionValue(nextStateName, nextStackSymbol)));
+		states[stateName].transitions.insert(std::make_pair(TransitionKey(symbol, stackSymbol), TransitionValue(nextStateName, nextStackSymbol)));
 	}
 
-	bool isAccepting(State *currentState) {
-		return acceptsWhenEmptyStack ? stack.empty() : currentState->accepting;
-	}
 
 public:
 	void load(std::string filename) {
@@ -101,7 +98,6 @@ public:
 		std::getline(fin, initialStateName);
 		//read initial stack symbol
 		std::getline(fin, initialStackSymbol);
-		stack.push(initialStackSymbol);
 		//read accepting states
 		std::string acceptingStatesLine;
 		std::getline(fin, acceptingStatesLine);
@@ -128,16 +124,18 @@ public:
 	}
 
 	bool verify(std::string word) {
-		State *currentState = &states.find(initialStateName)->second;
+		State *currentState = &states[initialStateName];
+		std::stack<std::string> stack;
+		stack.push(initialStackSymbol);
 		for (unsigned int i = 0; i < word.length(); i++) {
 			TransitionKey key(std::string(1, word.at(i)), stack.top());
 			stack.pop();
-			TransitionValue value = currentState->transitions.find(key)->second;
+			TransitionValue value = currentState->transitions[key];
 			currentState = &states[value.nextStateName];
 			stack.push(value.nextStackSymbol);
 		}
 		
-		return isAccepting(currentState);
+		return acceptsWhenEmptyStack ? stack.empty() : currentState->accepting;
 	}
 };
 
