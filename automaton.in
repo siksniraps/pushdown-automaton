@@ -1,11 +1,10 @@
 Q1 Q2
-a b c d
+a b
 Z Y
 Q1
 Z
 Q2
 F
-Q1 a Z Q2 Z
-Q1 b Z Q1 Y
-Q1 c Y Q1 Z
-Q2 d Z Q1 Z
+Q1 a e Q1 Y
+Q1 b Y Q1 e
+Q1 b Z Q2 e
